@@ -27,5 +27,3 @@
 - Eligible if:
   - Merchant’s total transactions ≥ MIN_TRANSACTIONS_FOR_UPGRADE,
   - avg_weightage is not null and ≤ merchant’s 10th percentile (w10).
-
-### Mermaid flow diagram
