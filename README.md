@@ -91,5 +91,24 @@ A customer–merchant pair is marked as eligible for `UPGRADE` if:
    - `"both"` — Start Y streaming, run X, then finish Y
 4. Execute the notebook.
 
-Example:
+
+---
+
+## Optional: Postgres Integration
+If DB credentials are configured:
+- A table (`PG_TABLE_KEYS`) will store processed S3 keys.
+- Prevents repeated processing of the same transaction chunk.
+
+---
+
+## Dependencies
+- boto3
+- psycopg2-binary (optional for Postgres)
+- pytz
+- pandas
+- pyspark
+- Databricks runtime environment
+
+
+
 
