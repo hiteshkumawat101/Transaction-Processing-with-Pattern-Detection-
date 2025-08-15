@@ -1,27 +1,26 @@
-flowchart LR
-    subgraph Databricks [Databricks Workspace (Driver + Executors)]
-        A[Input Loader\n(S3/DBFS/Workspace/UC/Drive)] --> B[Mechanism X\nChunk & Upload]
-        A --> C[Mechanism Y\nPoll & Detect]
-        B -->|CSV Chunks| S3_IN[(S3\nTransactions Folder)]
-        C -->|Poll keys| S3_IN
-        C -->|Detections JSON| S3_OUT[(S3\nDetections Folder)]
-        C -->|Processed keys| PG[(Postgres\n(optional))]
-        subgraph Detection[Pattern Detector (PatId1)]
-            D1[Top 10% customers per merchant]
-            D2[Avg weightage by (merchant, customer)]
-            D3[10th percentile per merchant]
-            D4[Merchant total txns >= threshold]
-            D1 --> D2 --> D3 --> D4
+User->>Dbx: Run notebook (RUN_MODE=both|x|y)
+Dbx->>Dbx: Load inputs (INPUT_SOURCE=catalog|s3|dbfs|workspace|gdrive)
+
+par Mechanism X
+    Dbx->>Dbx: Partition transactions (CHUNK_SIZE)
+    loop Every X_SLEEP_SECONDS
+        Dbx->>S3Tx: Put chunk CSV
+    end
+and Mechanism Y
+    loop Y_MAX_POLL_ROUNDS every Y_POLL_INTERVAL_SECS
+        Dbx->>S3Tx: List objects (Prefix)
+        Dbx->>PG: Load processed keys (optional)
+        Dbx->>Dbx: Filter new keys
+        alt New chunks found
+            Dbx->>S3Tx: GetObject CSV
+            Dbx->>Dbx: Spark read CSV
+            Dbx->>Dbx: PatId1 (top10%, avg<=p10, merchant txns>=threshold)
+            loop Batch DETECTION_BATCH_SIZE
+                Dbx->>S3Det: Put detections JSON
+            end
+            Dbx->>PG: Insert processed keys (optional)
+        else No new chunks
+            Dbx->>Dbx: Sleep and continue
         end
-        C --> Detection
     end
-
-    subgraph Inputs[Input Sources]
-        UC[Unity Catalog Tables\n(datadump.test.transactions,\n datadump.test.customer_importance)]
-        S3SRC[S3 CSV]
-        DBFS[DBFS Files]
-        WS[Workspace Files]
-        GD[Google Drive (mounted)]
-    end
-
-    Inputs --> A
+end
